@@ -2,7 +2,7 @@
 
 # Basic
 seed: 42
-dataset: m_IOATBC
+dataset: mIndustrial_and_Scientific
 item_count: 0
 test_only: false
 user_k: 5
