@@ -51,7 +51,7 @@ def parse_args():
     parser.add_argument('--wandb_run_name', type=str, default="")
     parser.add_argument('--dataset', type=str, default="m_IO")
     parser.add_argument('--dro_temperature', type=float, default=1.0)
-    # parser.add_argument('--backbone', type=str, default="Qwen2.5-1.5B")
+    # parser.add_argument('--backbone', type=str, default="Qwen3-1.7B")
     # parser.add_argument('--version', type=str, default="base")
 
     # Parse the command-line arguments

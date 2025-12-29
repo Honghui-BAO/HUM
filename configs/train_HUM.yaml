@@ -40,7 +40,7 @@ port: 12344
 # Model
 lora: true
 valid_first: false
-backbone: Qwen2.5-1.5B
+backbone: Qwen3-1.7B
 max_length: 512
 max_token_length: 1024
 item_emb_dim: 128
