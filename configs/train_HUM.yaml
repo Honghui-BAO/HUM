@@ -26,7 +26,7 @@ pretrained_path: None
 load:
 root_path: Qwen/
 data_path: dataset
-save_by_step: 500
+save_by_step: 100
 
 # Hardware
 multiGPU: true
@@ -44,7 +44,7 @@ backbone: Qwen3-1.7B
 max_length: 512
 max_token_length: 1024
 item_emb_dim: 128
-hidden_size: 1536
+hidden_size: 2048
 hidden_dropout_prob: 0.1
 hidden_act: relu
 
@@ -63,7 +63,7 @@ pretrain_lora: true
 batch_size: 16  # Consistent with the current run configuration
 alpha: 1
 beta_kl: 1
-early_stop_step_num: 5
+early_stop_step_num: 10
 valid_batch_size: null
 optim: adamw
 warmup_ratio: 0.001

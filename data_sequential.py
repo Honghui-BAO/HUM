@@ -23,6 +23,7 @@ class DataSequential(Dataset):
         self.tokenized_text = tokenized_text
         self.tokenized_domain = tokenized_domain
         self.token_id_dict = token_id_dict
+        self.sep_token_id = token_id_dict.get('<|emb|>', 151665)
         self.mode = mode
         self.length = 0
         self.data = None
@@ -140,7 +141,6 @@ class DataSequential(Dataset):
 
     def __getitem__(self, item):
         example_input = self.generate_example_input(self.data[item], item)
-        example_input.append(item)
         return example_input
 
     def load_seq(self):
@@ -241,13 +241,13 @@ class DataSequential(Dataset):
         # fp_tokens = 21
         for idx in range(self.item_count):
             if 'Qwen' in self.args.backbone:
-                candi_tokens = self.tokenized_text + self.item_title_tokens[idx] + [151665] + [self.tokenizer.eos_token_id]
+                candi_tokens = self.tokenized_text + self.item_title_tokens[idx] + [self.sep_token_id] + [self.tokenizer.eos_token_id]
             pad_len = fp_tokens - len(candi_tokens)
             if pad_len >= 0:
                 candi_item_input_ids.append(candi_tokens + [self.tokenizer.eos_token_id] * pad_len)
                 candi_item_attention_mask.append((len(candi_tokens) * [1] + [0] * pad_len))
             else:
-                candi_item_input_ids.append(candi_tokens[:fp_tokens-2]+ [151665]+ [self.tokenizer.eos_token_id])
+                candi_item_input_ids.append(candi_tokens[:fp_tokens-2]+ [self.sep_token_id]+ [self.tokenizer.eos_token_id])
                 candi_item_attention_mask.append( fp_tokens * [1])
         self.candi_item_input_ids = candi_item_input_ids
         self.candi_item_attention_mask = candi_item_attention_mask
@@ -353,7 +353,7 @@ class DataSequential(Dataset):
             sequence_input_ids.extend(self.item_title_tokens[seq_iid])
 
         if 'Qwen' == self.args.backbone[: 4]:
-            sequence_input_ids = sequence_input_ids + [151665]+ [self.tokenizer.eos_token_id]
+            sequence_input_ids = sequence_input_ids + [self.sep_token_id]+ [self.tokenizer.eos_token_id]
             sequence_attention_mask.append(1)
             sequence_attention_mask.append(1)
 
@@ -441,13 +441,13 @@ class DataSequential(Dataset):
         fp_tokens = 42+ len(self.tokenized_text)
         for iid in range(len(self.item_title_tokens)):
             if 'Qwen' == self.args.backbone[: 4]:
-                item_tokens = self.tokenized_text +self.item_title_tokens[iid] + [151665] + [self.tokenizer.eos_token_id]
+                item_tokens = self.tokenized_text +self.item_title_tokens[iid] + [self.sep_token_id] + [self.tokenizer.eos_token_id]
             pad_len = fp_tokens - len(item_tokens)
             if pad_len >= 0:
                 item_ids.append(item_tokens + [self.tokenizer.eos_token_id] * pad_len)
                 item_attn.append(len(item_tokens) * [1] + pad_len * [0])
             else:
-                item_ids.append(item_tokens[:fp_tokens-2]+ [151665] + [self.tokenizer.eos_token_id]
+                item_ids.append(item_tokens[:fp_tokens-2]+ [self.sep_token_id] + [self.tokenizer.eos_token_id]
                 )
                 item_attn.append(fp_tokens * [1])
 
