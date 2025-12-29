@@ -26,13 +26,13 @@ pretrained_path: None
 load:
 root_path: Qwen/
 data_path: dataset
-save_by_step: 5000
+save_by_step: 500
 
 # Hardware
 multiGPU: true
 distributed: true
 num_workers: 1
-num_gpus: 4
+num_gpus: 8
 num_nodes: 1
 local_rank: -1
 port: 12344
@@ -60,7 +60,7 @@ lora_target_modules:
 pretrain_lora: true
 
 # Training
-batch_size: 2  # Consistent with the current run configuration
+batch_size: 16  # Consistent with the current run configuration
 alpha: 1
 beta_kl: 1
 early_stop_step_num: 5

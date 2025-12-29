@@ -5,7 +5,7 @@ OUTPUT_PATH=${1:-./ckp/hum_v1.pth}
 DATASET=${2:-m_IOATBC}
 LR=${3:-5e-5}
 CONFIG=${4:-configs/train_HUM.yaml}
-NUM_GPUS=${5:-4}
+NUM_GPUS=${5:-8}
 PORT=${6:-29500}
 
 echo "========================================================================"
