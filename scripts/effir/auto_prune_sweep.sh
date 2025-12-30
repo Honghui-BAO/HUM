@@ -37,7 +37,7 @@ for k in "${ks[@]}"; do
     
     echo ""
     echo ">>> Step 1: Pruning with K=$k"
-    python3 prune_model.py \
+    python3 -u prune_model.py \
         --config "$CONFIG" \
         --scores_path "$SCORES_PATH" \
         --load_path "$LOAD_PATH" \
