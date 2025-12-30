@@ -21,8 +21,6 @@ class ImportanceScorer:
         self._register_hooks()
 
     def _register_hooks(self):
-        # Access the underlying Qwen2Model layers
-        # In HUM, self.model.llm is the PeftModel or AutoModel
         llm = self.model.llm
         if hasattr(llm, "base_model"):
             layers = llm.base_model.model.model.layers
@@ -30,32 +28,62 @@ class ImportanceScorer:
             layers = llm.model.layers
 
         for i, layer in enumerate(layers):
-            # Hook for Attention
-            self.hooks.append(layer.self_attn.register_forward_hook(
-                self._generate_hook(i, "attn")
-            ))
-            # Hook for MLP
-            self.hooks.append(layer.mlp.register_forward_hook(
-                self._generate_hook(i, "mlp")
-            ))
+            # We use a wrapper to handle different PyTorch/Transformers versions
+            # Transformers often passes 'hidden_states' as a keyword argument.
+            def register_with_check(module, idx, part_type):
+                hook_fn = self._generate_hook(idx, part_type)
+                try:
+                    # PyTorch 2.0+ supports with_kwargs=True
+                    self.hooks.append(module.register_forward_hook(hook_fn, with_kwargs=True))
+                except TypeError:
+                    # Fallback for older PyTorch
+                    self.hooks.append(module.register_forward_hook(hook_fn))
+
+            register_with_check(layer.self_attn, i, "attn")
+            register_with_check(layer.mlp, i, "mlp")
 
     def _generate_hook(self, layer_idx, part_type):
-        def hook(module, input, output):
-            # input[0] is the input tensor x
-            # output[0] is the output of the sub-layer (the residual F(x))
-            # Qwen2 attention and mlp return (hidden_states, ...) 
-            # If output is a tuple, take the first element
-            res = output[0] if isinstance(output, tuple) else output
-            x = input[0]
+        def hook(module, args, output, kwargs=None):
+            # Handle cases where args/kwargs vary by PyTorch version
+            # If with_kwargs=True, signature is (module, args, kwargs, output) -> wait, no.
+            # PyTorch 2.0 signature: hook(module, args, kwargs, output) OR hook(module, args, output)
+            # Actually, the signature depends on how it's registered.
             
-            # Importance = 1 - CosineSimilarity(x, x + res)
-            # Higher score means the layer changed the embedding significantly.
-            # We want to identify layers where F(x) is small relative to x.
+            # If kwargs is not passed (older torch), it might be (module, args, output)
+            # If output is the 3rd arg, then kwargs might be None or the 4th arg?
+            # Actually, standard is (module, input, output). 
+            # With kwargs=True, it's (module, args, kwargs, output).
+            
+            # Let's be extremely robust:
+            actual_args = args
+            actual_kwargs = kwargs
+            actual_output = output
+            
+            # If kwargs looks like output, it means we are in (module, args, output) mode
+            if actual_kwargs is not None and not isinstance(actual_kwargs, dict):
+                actual_output = actual_kwargs
+                actual_kwargs = {}
+
+            # Get input x
+            x = None
+            if actual_args and len(actual_args) > 0:
+                x = actual_args[0]
+            elif actual_kwargs and "hidden_states" in actual_kwargs:
+                x = actual_kwargs["hidden_states"]
+            
+            if x is None:
+                return # Can't calculate importance without input
+
+            # Get residual res
+            res = actual_output[0] if isinstance(actual_output, tuple) else actual_output
+            
             with torch.no_grad():
+                # Correct importance calculation: 
+                # Importance = 1 - CosineSimilarity(input, input + residual)
+                # Note: 'res' from the sub-layer hook IS the residual.
                 cosine_sim = F.cosine_similarity(x, x + res, dim=-1).mean()
                 score = 1 - cosine_sim
                 
-                # Store score
                 if part_type == "attn":
                     self.current_batch_attn[layer_idx] = score.item()
                 else:
