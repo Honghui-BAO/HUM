@@ -48,6 +48,9 @@ def main():
     sys.argv = [sys.argv[0], "--config", args_cli.config]
     from param import parse_args
     args_hum = parse_args()
+    args_hum.rank = 0
+    args_hum.gpu = 0
+    args_hum.num_gpus = 1
 
     # Load Tokenizer
     tokenizer = AutoTokenizer.from_pretrained(args_hum.root_path + args_hum.backbone, padding_side="left")

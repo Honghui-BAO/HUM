@@ -130,6 +130,11 @@ def main():
     from utils import amazon_dataset2fullname
     args.dataset = amazon_dataset2fullname[args.dataset] if args.dataset in amazon_dataset2fullname.keys() else args.dataset
     args.dataset = args.dataset + f'-{args.ratio}-{args.user_k}-{args.item_k}'
+    
+    # Initialize rank/gpu for standalone execution
+    args.rank = 0
+    args.gpu = 0
+    args.num_gpus = 1
 
     # Allow overriding data path if provided via CLI or env
     valid_data_path = os.environ.get("VALID_DATA_PATH", f"{args.data_path}/{args.dataset}/valid_data.pkl")
