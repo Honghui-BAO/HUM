@@ -97,7 +97,7 @@ def parse_args(parse=True, **optional_kwargs):
     parser.add_argument('--lora', default=True)
     parser.add_argument('--valid_first', action='store_true')
     parser.add_argument('--root_path', type=str, default='Qwen/')
-    parser.add_argument('--backbone', type=str, default='Qwen3-1.7B')
+    parser.add_argument('--backbone', type=str, default='Qwen2.5-1.5B')
     parser.add_argument('--max_length', type=int, default=512)
     parser.add_argument('--max_token_length', type=int, default=1024)
     parser.add_argument('--data_path', type=str, default='dataset')
