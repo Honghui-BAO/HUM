@@ -148,7 +148,15 @@ class Trainer(TrainerBase):
             self.hum_logger = None
             self.eval_logger = None
 
-        self.model = HUM(args, tokenizer)
+        # EffiR Pruning
+        pruned_mlp_layers = None
+        if hasattr(args, 'pruned_mlp_layers') and args.pruned_mlp_layers != "None":
+            try:
+                pruned_mlp_layers = [int(x) for x in args.pruned_mlp_layers.split(',')]
+            except ValueError:
+                print_rank0(f"Warning: Invalid pruned_mlp_layers format: {args.pruned_mlp_layers}")
+
+        self.model = HUM(args, tokenizer, pruned_mlp_layers=pruned_mlp_layers)
         self.tokenizer = tokenizer
 
         # GPU Options

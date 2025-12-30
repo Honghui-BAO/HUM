@@ -12,12 +12,18 @@ import collections
 import pickle
 
 
+class EmptyMLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+    def forward(self, x):
+        return 0
+
 class HUM(nn.Module):
     """
-    HUM Recommendation Model.
+    HUM Recommendation Model with support for EffiR pruning.
     """
     
-    def __init__(self, args, tokenizer):
+    def __init__(self, args, tokenizer, pruned_mlp_layers=None):
         """Initialize HUM model."""
         super().__init__()
         self.tokenizer = tokenizer
@@ -30,6 +36,10 @@ class HUM(nn.Module):
                 torch_dtype="bfloat16",
             )
             self.llm.resize_token_embeddings(len(tokenizer))
+        
+        # Apply Pruning if specified
+        if pruned_mlp_layers:
+            self.prune_mlp_layers(pruned_mlp_layers)
         
 
         # LoRA Configuration
@@ -49,6 +59,19 @@ class HUM(nn.Module):
             self.trainable2float()
 
         self.item_embs = None
+
+    def prune_mlp_layers(self, layers_to_prune):
+        """
+        Replaces the MLP sub-layer with EmptyMLP for specified layer indices.
+        """
+        if hasattr(self.llm, "base_model"):
+            layers = self.llm.base_model.model.model.layers
+        else:
+            layers = self.llm.model.layers
+
+        for idx in layers_to_prune:
+            print_rank0(f"Pruning MLP in layer {idx}...", self.args.rank)
+            layers[idx].mlp = EmptyMLP()
 
     def trainable2float(self):
         """Convert trainable parameters to float32 for LoRA."""
