@@ -1,14 +1,14 @@
 #!/bin/bash
+export NCCL_P2P_LEVEL=NVL
+export http_proxy=http://oversea-squid1.jp.txyun:11080 
+export https_proxy=http://oversea-squid1.jp.txyun:11080 
+export no_proxy=localhost,127.0.0.1,localaddress,localdomain.com,internal,corp.kuaishou.com,test.gifshow.com,staging.kuaishou.com
 
 # Parameters
 CONFIG=${1:-configs/train_HUM.yaml}
-LOAD_PATH=$2
+LOAD_PATH=${2:-/llm-reco-ssd-share/baohonghui/Baselines/HUM/ckp/hum_v1_qwen2.pth}
 DATASET=${3:-mIndustrial_and_Scientific}
 
-if [ -z "$LOAD_PATH" ]; then
-    echo "Usage: $0 <config_path> <load_path> [dataset]"
-    exit 1
-fi
 
 echo "========================================================================"
 echo "Stage 1: Analyzing Layer Importance (EffiR)"
@@ -21,7 +21,7 @@ echo "========================================================================"
 # Set validation data path if provided by user (server specific)
 export VALID_DATA_PATH="/llm-reco-ssd-share/baohonghui/Baselines/HUM/local_dataset/${DATASET}-1.0-5-5/valid_data.pkl"
 
-python calculate_importance.py \
+python3 -u calculate_importance.py \
     --config "$CONFIG" \
     --load "$LOAD_PATH" \
     --dataset "$DATASET"
