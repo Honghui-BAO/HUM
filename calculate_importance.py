@@ -43,44 +43,34 @@ class ImportanceScorer:
             register_with_check(layer.mlp, i, "mlp")
 
     def _generate_hook(self, layer_idx, part_type):
-        def hook(module, args, output, kwargs=None):
-            # Handle cases where args/kwargs vary by PyTorch version
-            # If with_kwargs=True, signature is (module, args, kwargs, output) -> wait, no.
-            # PyTorch 2.0 signature: hook(module, args, kwargs, output) OR hook(module, args, output)
-            # Actually, the signature depends on how it's registered.
-            
-            # If kwargs is not passed (older torch), it might be (module, args, output)
-            # If output is the 3rd arg, then kwargs might be None or the 4th arg?
-            # Actually, standard is (module, input, output). 
-            # With kwargs=True, it's (module, args, kwargs, output).
-            
-            # Let's be extremely robust:
-            actual_args = args
-            actual_kwargs = kwargs
-            actual_output = output
-            
-            # If kwargs looks like output, it means we are in (module, args, output) mode
-            if actual_kwargs is not None and not isinstance(actual_kwargs, dict):
-                actual_output = actual_kwargs
-                actual_kwargs = {}
+        def hook(module, *any_args):
+            # PyTorch 2.0+ with_kwargs=True: (module, input_args, input_kwargs, output)
+            # PyTorch standard: (module, input, output)
+            if len(any_args) == 3:
+                # (input_args, input_kwargs, output)
+                input_args, input_kwargs, output = any_args
+            elif len(any_args) == 2:
+                # (input, output)
+                input_args, output = any_args
+                input_kwargs = {}
+            else:
+                return
 
             # Get input x
             x = None
-            if actual_args and len(actual_args) > 0:
-                x = actual_args[0]
-            elif actual_kwargs and "hidden_states" in actual_kwargs:
-                x = actual_kwargs["hidden_states"]
+            if input_args and len(input_args) > 0:
+                x = input_args[0]
+            elif input_kwargs and "hidden_states" in input_kwargs:
+                x = input_kwargs["hidden_states"]
             
             if x is None:
-                return # Can't calculate importance without input
+                return 
 
             # Get residual res
-            res = actual_output[0] if isinstance(actual_output, tuple) else actual_output
+            res = output[0] if isinstance(output, tuple) else output
             
             with torch.no_grad():
-                # Correct importance calculation: 
                 # Importance = 1 - CosineSimilarity(input, input + residual)
-                # Note: 'res' from the sub-layer hook IS the residual.
                 cosine_sim = F.cosine_similarity(x, x + res, dim=-1).mean()
                 score = 1 - cosine_sim
                 
