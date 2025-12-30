@@ -145,7 +145,9 @@ def main():
     tokenized_text = tokenizer(text, padding=False, add_special_tokens=False)['input_ids']
     
     # Load Dataloader (Validation set)
-    _, val_loader, _ = get_dataloader(args, tokenizer, tokenized_text, tokenized_text, token_id_dict)
+    # The dataloader needs tokenized_text and tokenized_domain
+    # In run_hum.py, they both use tokenized_text.
+    _, val_loader, _ = get_dataloader(args, tokenizer, tokenized_text, {d: tokenized_text for d in [args.dataset]}, token_id_dict)
     
     # Load Model
     model = HUM(args, tokenizer)
