@@ -64,10 +64,34 @@ class HUM(nn.Module):
         """
         Replaces the MLP sub-layer with EmptyMLP for specified layer indices.
         """
-        if hasattr(self.llm, "base_model"):
-            layers = self.llm.base_model.model.model.layers
-        else:
+        # Robustly find layers. Qwen2 architecture: ForCausalLM -> model -> layers
+        curr = self.llm
+        # If PEFT-wrapped, unwrap it first. PeftModel -> base_model (LoraModel) -> model (Qwen2ForCausalLM)
+        if hasattr(curr, "base_model") and not hasattr(curr, "layers"):
+            # Check if it's really a PEFT/wrapper object and not a standard model with a base_model property
+            # For Qwen2ForCausalLM, base_model is a property that returns self.model
+            # But the PeftModel attribute 'base_model' is a real attribute.
+            # Usually we prune BEFORE LoRA, so we just check for self.llm.model.layers
+            pass 
+
+        if hasattr(self.llm, "model") and hasattr(self.llm.model, "layers"):
             layers = self.llm.model.layers
+        elif hasattr(self.llm, "layers"):
+            layers = self.llm.layers
+        else:
+            # Fallback for PEFT nested structures
+            m = self.llm
+            while hasattr(m, "base_model") or hasattr(m, "model"):
+                if hasattr(m, "model") and hasattr(m.model, "layers"):
+                    m = m.model
+                    break
+                if hasattr(m, "base_model"):
+                    m = m.base_model
+                elif hasattr(m, "model"):
+                    m = m.model
+                else:
+                    break
+            layers = m.layers
 
         for idx in layers_to_prune:
             print_rank0(f"Pruning MLP in layer {idx}...", self.args.rank)

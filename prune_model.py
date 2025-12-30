@@ -20,11 +20,25 @@ def prune_mlp_layers(model, layers_to_prune):
     """
     Replaces the MLP sub-layer with EmptyMLP for specified layer indices.
     """
-    llm = model.llm
-    if hasattr(llm, "base_model"):
-        layers = llm.base_model.model.model.layers
+    m = model.llm
+    if hasattr(m, "model") and hasattr(m.model, "layers"):
+        layers = m.model.layers
+    elif hasattr(m, "layers"):
+        layers = m.layers
     else:
-        layers = llm.model.layers
+        # Fallback
+        curr = m
+        while hasattr(curr, "base_model") or hasattr(curr, "model"):
+            if hasattr(curr, "model") and hasattr(curr.model, "layers"):
+                curr = curr.model
+                break
+            if hasattr(curr, "base_model"):
+                curr = curr.base_model
+            elif hasattr(curr, "model"):
+                curr = curr.model
+            else:
+                break
+        layers = curr.layers
 
     for idx in layers_to_prune:
         print(f"Pruning MLP in layer {idx}...")
