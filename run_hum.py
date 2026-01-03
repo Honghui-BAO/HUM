@@ -100,8 +100,14 @@ def main_worker(local_rank, args):
         tokenizer.token_id_dict = token_id_dict
     train_loader, valid_loader, test_loader = get_dataloader(args, tokenizer, tokenized_text,tokenized_text, token_id_dict)
 
-    trainer = Trainer(args, tokenizer, train_loader, valid_loader, test_loader, train=True)
-    trainer.train()
+    is_train = args.test_only.lower() != "true"
+    trainer = Trainer(args, tokenizer, train_loader, valid_loader, test_loader, train=is_train)
+    
+    if is_train:
+        trainer.train()
+    else:
+        print_rank0("Test only mode: Skipping training loop.", args.rank)
+        trainer.valid_epoch('Test', mode='test')
 
 
 if __name__ == "__main__":
