@@ -48,9 +48,8 @@ for k in "${ks[@]}"; do
     PRUNED_LAYERS=$(python3 -c "import json; print(','.join(map(str, json.load(open('$INFO_PATH'))['pruned_mlp_layers'])))")
     
     echo ">>> Step 2: Validating K=$k (Pruned Layers: $PRUNED_LAYERS)"
-    # Run validation and capture NDCG@10 (or similar) if possible, for now just run it
-    # We use a subshell to capture the output and append to log
-    bash scripts/effir/validate_pruned.sh "$SAVE_PATH" "$PRUNED_LAYERS" "$CONFIG" "$DATASET" 1 | tee -a $RESULTS_LOG
+    # Run validation and capture results with line-buffering
+    stdbuf -oL bash scripts/effir/validate_pruned.sh "$SAVE_PATH" "$PRUNED_LAYERS" "$CONFIG" "$DATASET" 1 | tee -a $RESULTS_LOG
     
     echo "------------------------------------------------------------------------" >> $RESULTS_LOG
 done

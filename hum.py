@@ -64,34 +64,37 @@ class HUM(nn.Module):
         """
         Replaces the MLP sub-layer with EmptyMLP for specified layer indices.
         """
-        # Robustly find layers. Qwen2 architecture: ForCausalLM -> model -> layers
-        curr = self.llm
-        # If PEFT-wrapped, unwrap it first. PeftModel -> base_model (LoraModel) -> model (Qwen2ForCausalLM)
-        if hasattr(curr, "base_model") and not hasattr(curr, "layers"):
-            # Check if it's really a PEFT/wrapper object and not a standard model with a base_model property
-            # For Qwen2ForCausalLM, base_model is a property that returns self.model
-            # But the PeftModel attribute 'base_model' is a real attribute.
-            # Usually we prune BEFORE LoRA, so we just check for self.llm.model.layers
-            pass 
+        print_rank0("DEBUG: Searching for layers in model structure...", self.args.rank)
+        m = self.llm
+        layers = None
+        
+        # Try common Qwen2 structures
+        curr = m
+        for i in range(10): # Prevent infinite loop
+            if hasattr(curr, "layers"):
+                layers = curr.layers
+                break
+            if hasattr(curr, "model") and hasattr(curr.model, "layers"):
+                layers = curr.model.layers
+                break
+            
+            # Try unwrapping PEFT or CausalLM
+            if hasattr(curr, "base_model") and curr.base_model is not curr:
+                curr = curr.base_model
+            elif hasattr(curr, "model") and curr.model is not curr:
+                curr = curr.model
+            else:
+                break
 
-        if hasattr(self.llm, "model") and hasattr(self.llm.model, "layers"):
-            layers = self.llm.model.layers
-        elif hasattr(self.llm, "layers"):
-            layers = self.llm.layers
-        else:
-            # Fallback for PEFT nested structures
-            m = self.llm
-            while hasattr(m, "base_model") or hasattr(m, "model"):
-                if hasattr(m, "model") and hasattr(m.model, "layers"):
-                    m = m.model
-                    break
-                if hasattr(m, "base_model"):
-                    m = m.base_model
-                elif hasattr(m, "model"):
-                    m = m.model
-                else:
-                    break
-            layers = m.layers
+        if layers is None:
+            # Fallback to direct attribute check
+            if hasattr(m, "layers"): layers = m.layers
+            elif hasattr(m, "model") and hasattr(m.model, "layers"): layers = m.model.layers
+            elif hasattr(m, "base_model") and hasattr(m.base_model, "model") and hasattr(m.base_model.model, "model") and hasattr(m.base_model.model.model, "layers"):
+                layers = m.base_model.model.model.layers
+            
+        if layers is None:
+            raise AttributeError("Could not find 'layers' in model. Check architecture.")
 
         for idx in layers_to_prune:
             print_rank0(f"Pruning MLP in layer {idx}...", self.args.rank)

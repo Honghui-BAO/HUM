@@ -20,25 +20,41 @@ def prune_mlp_layers(model, layers_to_prune):
     """
     Replaces the MLP sub-layer with EmptyMLP for specified layer indices.
     """
+    print("DEBUG: Searching for layers in model structure...")
     m = model.llm
-    if hasattr(m, "model") and hasattr(m.model, "layers"):
-        layers = m.model.layers
-    elif hasattr(m, "layers"):
-        layers = m.layers
-    else:
-        # Fallback
-        curr = m
-        while hasattr(curr, "base_model") or hasattr(curr, "model"):
-            if hasattr(curr, "model") and hasattr(curr.model, "layers"):
-                curr = curr.model
-                break
-            if hasattr(curr, "base_model"):
-                curr = curr.base_model
-            elif hasattr(curr, "model"):
-                curr = curr.model
-            else:
-                break
-        layers = curr.layers
+    layers = None
+    
+    # Try common Qwen2 structures
+    curr = m
+    for i in range(10): # Prevent infinite loop
+        print(f"DEBUG: Level {i}, Current type: {type(curr)}")
+        if hasattr(curr, "layers"):
+            layers = curr.layers
+            print("DEBUG: Found layers directly.")
+            break
+        if hasattr(curr, "model") and hasattr(curr.model, "layers"):
+            layers = curr.model.layers
+            print("DEBUG: Found layers in .model.layers")
+            break
+        
+        # Try unwrapping PEFT or CausalLM
+        if hasattr(curr, "base_model") and curr.base_model is not curr:
+            curr = curr.base_model
+        elif hasattr(curr, "model") and curr.model is not curr:
+            curr = curr.model
+        else:
+            break
+
+    if layers is None:
+        print("DEBUG: Generic search failed, checking common attributes...")
+        # Fallback to direct attribute check
+        if hasattr(m, "layers"): layers = m.layers
+        elif hasattr(m, "model") and hasattr(m.model, "layers"): layers = m.model.layers
+        elif hasattr(m, "base_model") and hasattr(m.base_model, "model") and hasattr(m.base_model.model, "model") and hasattr(m.base_model.model.model, "layers"):
+            layers = m.base_model.model.model.layers
+        
+    if layers is None:
+        raise AttributeError("Could not find 'layers' in model. Check architecture.")
 
     for idx in layers_to_prune:
         print(f"Pruning MLP in layer {idx}...")
@@ -99,6 +115,7 @@ def main():
     # However, our HUM class is the same, and we modified the instance.
     
     # Let's save the full state dict.
+    print(f"Saving pruned model to {args_cli.save_path} ... (this might take a minute)")
     torch.save(model.state_dict(), args_cli.save_path)
     print(f"Pruned model saved to {args_cli.save_path}")
 

@@ -22,8 +22,8 @@ echo "Config: $CONFIG"
 echo "Dataset: $DATASET"
 echo "========================================================================"
 
-# Use torchrun to launch validation
-torchrun --nproc_per_node=$NUM_GPUS run_hum.py \
+# Use torchrun to launch validation with unbuffered output
+PYTHONUNBUFFERED=1 torchrun --nproc_per_node=$NUM_GPUS run_hum.py \
     --config "$CONFIG" \
     --load "$PRUNED_PATH" \
     --dataset "$DATASET" \
