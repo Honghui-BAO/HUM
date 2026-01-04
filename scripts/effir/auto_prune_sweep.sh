@@ -31,17 +31,23 @@ RESULTS_LOG="pruning_sweep_results.log"
 echo "Pruning Sweep Log - $(date)" > $RESULTS_LOG
 echo "-------------------------------------------" >> $RESULTS_LOG
 
+# Pruning Safe-Zone Parameters (Prevents bottleneck drop)
+SKIP_BOTTOM=${5:-8}
+SKIP_TOP=${6:-2}
+
 for k in "${ks[@]}"; do
     SAVE_PATH="ckp/pruned_model_k${k}.pth"
     INFO_PATH="${SAVE_PATH}.info.json"
     
     echo ""
-    echo ">>> Step 1: Pruning with K=$k"
+    echo ">>> Step 1: Pruning with K=$k (Skipping bottom $SKIP_BOTTOM, top $SKIP_TOP)"
     python3 -u prune_model.py \
         --config "$CONFIG" \
         --scores_path "$SCORES_PATH" \
         --load_path "$LOAD_PATH" \
         --top_k "$k" \
+        --skip_bottom "$SKIP_BOTTOM" \
+        --skip_top "$SKIP_TOP" \
         --save_path "$SAVE_PATH"
     
     # Extract pruned indices from info file
